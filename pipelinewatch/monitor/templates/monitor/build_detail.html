@@ -1,0 +1,24 @@
+{% extends "monitor/base.html" %}
+{% block title %}{{ build.project.name }} #{{ build.external_id }} · Pipelinewatch{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{% url 'dashboard' %}">All pipelines</a> / <a href="{{ build.project.get_absolute_url }}">{{ build.project.name }}</a></p>
+<h1><span class="badge s-{{ build.status }}">{{ build.get_status_display }}</span> {{ build.commit_message|default:"No commit message" }}</h1>
+
+<dl class="facts">
+  <dt>Branch</dt><dd><code>{{ build.branch|default:"n/a" }}</code></dd>
+  <dt>Commit</dt><dd><code>{{ build.short_sha|default:"n/a" }}</code></dd>
+  <dt>Author</dt><dd>{{ build.author|default:"n/a" }}</dd>
+  <dt>Source</dt><dd>{{ build.get_provider_display }} run {{ build.external_id }}</dd>
+  <dt>Started</dt><dd>{% if build.started_at %}{{ build.started_at }}{% else %}n/a{% endif %}</dd>
+  <dt>Finished</dt><dd>{% if build.finished_at %}{{ build.finished_at }}{% else %}n/a{% endif %}</dd>
+  <dt>Duration</dt><dd>{{ build.duration_display }}</dd>
+  {% if build.url %}<dt>Run page</dt><dd><a href="{{ build.url }}" rel="noopener">Open in {{ build.get_provider_display }}</a></dd>{% endif %}
+</dl>
+
+<h2>Log</h2>
+{% if build.log %}
+<pre class="log">{{ build.log }}</pre>
+{% else %}
+<p class="empty">No log was sent with this build. Include a <code>log</code> field in generic webhooks to see output here.</p>
+{% endif %}
+{% endblock %}

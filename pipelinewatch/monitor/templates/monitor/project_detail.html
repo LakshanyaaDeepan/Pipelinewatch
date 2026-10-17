@@ -1,0 +1,82 @@
+{% extends "monitor/base.html" %}
+{% block title %}{{ project.name }} · Pipelinewatch{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{% url 'dashboard' %}">All pipelines</a></p>
+<h1>{{ project.name }}</h1>
+{% if project.repo_url %}<p class="muted"><a href="{{ project.repo_url }}" rel="noopener">{{ project.repo_url }}</a></p>{% endif %}
+
+<div class="summary">
+  <div><b>{% if rate is not None %}{{ rate }}%{% else %}n/a{% endif %}</b><span class="muted">pass rate, last {{ pulse|length }}</span></div>
+  <div><b>{{ avg_duration }}</b><span class="muted">average passing run</span></div>
+</div>
+
+<div class="pulse big" aria-label="Recent builds, oldest to newest">
+  {% for b in pulse %}<a class="tick s-{{ b.status }}" href="{{ b.get_absolute_url }}" title="{{ b.get_status_display }}: {{ b.commit_message|truncatechars:50 }}"><span class="sr">{{ b.get_status_display }}</span></a>{% endfor %}
+</div>
+
+<h2>Builds per day</h2>
+<div class="chart" role="img" aria-label="Passed and failed builds per day for the last 14 days">
+  {% for d in chart %}
+  <div class="col" title="{{ d.label }}: {{ d.ok }} passed, {{ d.bad }} failed">
+    <div class="stack"><span class="bad" style="height:{{ d.bad_pct }}%"></span><span class="ok" style="height:{{ d.ok_pct }}%"></span></div>
+    <small>{{ d.short }}</small>
+  </div>
+  {% endfor %}
+</div>
+
+<h2>History</h2>
+<form method="get" class="filters">
+  <label>Branch
+    <select name="branch">
+      <option value="">All branches</option>
+      {% for b in branches %}<option value="{{ b }}" {% if b == selected_branch %}selected{% endif %}>{{ b }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Status
+    <select name="status">
+      <option value="">Any status</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <button class="btn" type="submit">Apply filters</button>
+</form>
+
+{% if page.object_list %}
+<div class="scroll">
+<table class="builds">
+  <thead><tr><th>Status</th><th>Commit</th><th>Branch</th><th>Author</th><th>Duration</th><th>Started</th></tr></thead>
+  <tbody>
+    {% for b in page.object_list %}
+    <tr>
+      <td><a class="badge s-{{ b.status }}" href="{{ b.get_absolute_url }}">{{ b.get_status_display }}</a></td>
+      <td><code>{{ b.short_sha }}</code> {{ b.commit_message|truncatechars:60 }}</td>
+      <td><code>{{ b.branch }}</code></td>
+      <td>{{ b.author }}</td>
+      <td class="num">{{ b.duration_display }}</td>
+      <td class="muted" title="{{ b.created_at }}">{{ b.created_at|timesince }} ago</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="pager">
+  {% if page.has_previous %}<a href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page.previous_page_number }}">Newer</a>{% endif %}
+  <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page.next_page_number }}">Older</a>{% endif %}
+</p>
+{% else %}
+<p class="empty">No builds match. Send a webhook to this project, or clear the filters.</p>
+{% endif %}
+
+<h2>Webhook</h2>
+<p>Send CI events to this URL:</p>
+<pre class="snippet">{{ webhook_url }}</pre>
+{% if user.is_staff %}
+<p>Secret: <code>{{ project.webhook_secret }}</code></p>
+<p class="muted">GitHub: use the secret in the webhook settings, content type <code>application/json</code>, event "Workflow runs".
+GitLab: paste it as the secret token, trigger "Pipeline events".
+Other tools: POST JSON with an <code>X-Webhook-Token</code> header.</p>
+{% else %}
+<p class="muted">Ask an admin for the webhook secret.</p>
+{% endif %}
+{% endblock %}

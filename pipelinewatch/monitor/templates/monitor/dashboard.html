@@ -1,0 +1,43 @@
+{% extends "monitor/base.html" %}
+{% block content %}
+<h1>Pipelines</h1>
+<p class="muted">{{ builds_today }} build{{ builds_today|pluralize }} in the last 24 hours</p>
+
+<div class="summary">
+  <div class="s-success"><b>{{ counts.passing }}</b><span class="badge">Passing</span></div>
+  <div class="s-failed"><b>{{ counts.failing }}</b><span class="badge">Failing</span></div>
+  <div class="s-running"><b>{{ counts.running }}</b><span class="badge">In progress</span></div>
+</div>
+
+{% if projects %}
+<ul class="list">
+  {% for p in projects %}
+  <li class="row">
+    <span class="avatar{% if p.latest %} s-{{ p.latest.status }}{% endif %}" aria-hidden="true">{{ p.name|first|upper }}</span>
+    <div class="who">
+      <a class="name" href="{{ p.get_absolute_url }}">{{ p.name }}</a>
+      {% if p.latest %}<span class="msg">{{ p.latest.commit_message|truncatechars:70 }}</span>{% endif %}
+    </div>
+    <div class="now">
+      {% if p.latest %}
+        <span class="badge s-{{ p.latest.status }}">{{ p.latest.get_status_display }}</span>
+        {% if p.latest.branch %}<code>{{ p.latest.branch }}</code>{% endif %}
+        <span class="muted">{{ p.latest.created_at|timesince }} ago</span>
+      {% else %}
+        <span class="muted">No builds yet</span>
+      {% endif %}
+    </div>
+    <div class="pulse" aria-label="Last {{ p.pulse|length }} builds, oldest to newest">
+      {% for b in p.pulse %}<a class="tick s-{{ b.status }}" href="{{ b.get_absolute_url }}" title="{{ b.get_status_display }}: {{ b.commit_message|truncatechars:50 }}"><span class="sr">{{ b.get_status_display }}</span></a>{% endfor %}
+    </div>
+    <div class="rate" title="Pass rate over the last {{ p.pulse|length }} builds">{% if p.rate is not None %}{{ p.rate }}%{% else %}n/a{% endif %}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">
+  No projects yet.
+  {% if user.is_staff %}<a href="{% url 'admin:monitor_project_add' %}">Add a project</a>, then point your repository's webhook at it.{% else %}Ask an admin to add one.{% endif %}
+</p>
+{% endif %}
+{% endblock %}
